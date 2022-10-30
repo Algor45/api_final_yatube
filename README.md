@@ -53,15 +53,127 @@ python manage.py runserver
 ```
 
 ### Примеры
-Для доступа к API необходимо получить токен выполнив POST запрос на адрес http://127.0.0.1:8000/api/v1/jwt/create/
-передав в формате JSON поля username и password.
-Полученные токен передавайте в header Authorization в формате Bearer <токен>
+## Создание нового пользователя.
 
-Для получения списка всех публикаций отправьте GET запрос на адрес http://127.0.0.1:8000/api/v1/posts/
-Поддерживается LimitOffset пагинация.
+Запрос
+```
+POST http://127.0.0.1:8000/api/v1/users/
+Content-Type: application/json
 
-Для добавления новой публикации отправьте POST запрос содержащий необходимые данные
-на адрес http://127.0.0.1:8000/api/v1/posts/ . Доступно только авторизованным пользователям.
+{
+    "username": "example_user",
+    "password": "1234_password"
+}
+```
 
-Подписка нпа пользователя осуществляется через POST запрос на адрес http://127.0.0.1:8000/api/v1/follow/
-с передачей в теле запроса имени пользователя на которго хотите подписаться.
+Вернет
+```
+{
+  "email": "",
+  "username": "example_user",
+  "id": 1
+}
+```
+и создаст нового в пользователя в бд.
+
+## Получение токена.
+
+Запрос
+```
+POST http://127.0.0.1:8000/api/v1/jwt/create/
+Content-Type: application/json
+
+{
+    "username": "example_user",
+    "password": "1234_password"
+}
+```
+
+Вернет токен в поле access ,а также refresh поле необходимое для обновления токена.
+```
+{
+  "refresh": "example_refresh_field",
+  "access": "example_access_field"
+}
+```
+
+## Создание поста.
+
+Запрос
+```
+POST http://127.0.0.1:8000/api/v1/posts/
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+    "text": "example_text"
+}
+```
+
+Вернет
+```
+{
+  "id": 1,
+  "text": "example_text",
+  "author": "example_user",
+  "image": null,
+  "group": null,
+  "pub_date": "2022-10-30T06:00:58.435119Z"
+}
+```
+и создаст новый пост в бд.
+
+## Возвращение списка постов.
+
+Запрос
+```
+GET  http://127.0.0.1:8000/api/v1/posts/
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+Вернет список всех пстов.
+```
+[
+  {
+    "id": 1,
+    "text": "example_text",
+    "author": "example_user",
+    "image": null,
+    "group": null,
+    "pub_date": "2022-10-30T06:00:58.435119Z"
+  },
+  {
+    "id": 2,
+    "text": "example_text2",
+    "author": "example_user",
+    "image": null,
+    "group": null,
+    "pub_date": "2022-10-30T06:04:02.704151Z"
+  }
+]
+```
+Данный запрос поддерживает LimitOffset пагинацию.
+
+## Подписка.
+
+Запрос
+```
+POST http://127.0.0.1:8000/api/v1/follow/
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+    "following": "example_user2"
+}
+```
+
+Вернет
+```
+{
+  "user": "example_user",
+  "following": "example_user2"
+}
+```
+И осществит подписку на пользователи указанного в поле following.
+

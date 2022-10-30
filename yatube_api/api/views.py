@@ -1,19 +1,20 @@
 """Write your api app view functions here."""
 
 from django.shortcuts import get_object_or_404
-from posts.models import Group, Post, User
+from posts.models import Group, Post
 from rest_framework import filters, mixins, viewsets
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import (IsAuthenticated,
+                                        IsAuthenticatedOrReadOnly)
 
-from .permissions import AuthorPermissionOrReadOnly
+from .permissions import AuthorPermissionOrReadOnly, ReadOnly
 from .serializers import (CommentSerializer, FollowSerializer, GroupSerializer,
                           PostSerializer)
 
 
-class GroupRetrieveListViewSet(mixins.ListModelMixin,
-                               mixins.RetrieveModelMixin,
-                               viewsets.GenericViewSet):
+class FollowCreateListViewSet(mixins.ListModelMixin,
+                              mixins.CreateModelMixin,
+                              viewsets.GenericViewSet):
     """Mixin RetriveList."""
 
     pass
@@ -31,13 +32,19 @@ class PostViewSet(viewsets.ModelViewSet):
         """Переопределение метода create для PostViewSet."""
         serializer.save(author=self.request.user)
 
+    def get_permissions(self):
+        """Переопределение разрешений для безопасного действия."""
+        if self.action == 'retrieve':
+            return (ReadOnly(),)
+        return super().get_permissions()
 
-class GroupViewSet(GroupRetrieveListViewSet):
+
+class GroupViewSet(viewsets.ReadOnlyModelViewSet):
     """Viewset для модели Group и GroupSerializer."""
 
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
-    permission_classes = [AuthorPermissionOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, ]
 
 
 class CommentPostViewSet(viewsets.ModelViewSet):
@@ -49,15 +56,22 @@ class CommentPostViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Переопределение метода create для CommentPostViewSet."""
-        serializer.save(author=self.request.user)
+        post = get_object_or_404(Post, pk=self.kwargs.get('post_id'))
+        serializer.save(post=post, author=self.request.user)
 
     def get_queryset(self):
         """Переопределение метода get_queryset для CommenPostViewSet."""
         post = get_object_or_404(Post, pk=self.kwargs.get('post_id'))
         return post.comments
 
+    def get_permissions(self):
+        """Переопределение разрешений для безопасного действия."""
+        if self.action == 'retrieve':
+            return (ReadOnly(),)
+        return super().get_permissions()
 
-class FollowViewSet(viewsets.ModelViewSet):
+
+class FollowViewSet(FollowCreateListViewSet):
     """Viewset для модели Follow и FollowSerializer."""
 
     serializer_class = FollowSerializer
@@ -71,5 +85,4 @@ class FollowViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Переопределение метода get_queryset для FollowViewSet."""
-        user = get_object_or_404(User, username=self.request.user.username)
-        return user.follower
+        return self.request.user.follower

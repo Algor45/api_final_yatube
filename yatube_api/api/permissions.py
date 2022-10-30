@@ -6,8 +6,21 @@ class AuthorPermissionOrReadOnly(BasePermission):
 
     message = 'У вас нет прав на эту операцию.'
 
-    def has_object_permission(self, request, view, obj):
-        """Сравнение автора объекта с текущим пользователем
-           а также проверка на безопасные методы."""
+    def has_permission(self, request, view):
+        """Проверка метод запроса безопасен или пользователь авторизован."""
+        return (
+            request.method in SAFE_METHODS
+            or request.user.is_authenticated
+        )
 
-        return request.method in SAFE_METHODS or obj.author == request.user
+    def has_object_permission(self, request, view, obj):
+        """Сравнение автора объекта с текущим пользователем."""
+
+        return obj.author == request.user
+
+
+class ReadOnly(BasePermission):
+    """Разрешение только для чтения."""
+    def has_permission(self, request, view):
+        """Проверка или метод запроса безопасен."""
+        return request.method in SAFE_METHODS
